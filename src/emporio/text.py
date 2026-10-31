@@ -1,11 +1,21 @@
 """Text normalization shared by catalog search and verification."""
 
 import re
+import threading
 import unicodedata
 
 import snowballstemmer
 
-_stemmer = snowballstemmer.stemmer("portuguese")
+# Stemmer instances keep state while stemming, and requests run on a thread pool.
+_local = threading.local()
+
+
+def _stem(word: str) -> str:
+    if not hasattr(_local, "stemmer"):
+        _local.stemmer = snowballstemmer.stemmer("portuguese")
+    stemmed: str = _local.stemmer.stemWord(word)
+    return stemmed
+
 
 STOPWORDS = frozenset(
     [
@@ -75,7 +85,7 @@ def tokens(text: str) -> list[str]:
 def analyze(text: str) -> list[str]:
     """Search terms: folded, without stopwords, stemmed. Terms with digits stay intact."""
     words = [word for word in tokens(text) if word not in STOPWORDS]
-    return [word if re.search(r"\d", word) else _stemmer.stemWord(word) for word in words]
+    return [word if re.search(r"\d", word) else _stem(word) for word in words]
 
 
 def normalize_phone(phone: str) -> str:
