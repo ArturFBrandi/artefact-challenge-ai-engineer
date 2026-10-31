@@ -83,6 +83,19 @@ class SearchProductsInput(BaseModel):
     limit: int = Field(6, ge=1, le=12)
 
 
+def _match_terms(rows: list[sqlite3.Row], terms: set[str]) -> tuple[list[sqlite3.Row], bool]:
+    """All words first. If that finds nothing, products matching at least half of the words."""
+    if not terms:
+        return rows, False
+    scored = [(len(terms & set(analyze(r["search_text"]))), r) for r in rows]
+    complete = [r for matched, r in scored if matched == len(terms)]
+    if complete:
+        return complete, False
+    if len(terms) == 1:
+        return [], False
+    return [r for matched, r in scored if matched * 2 >= len(terms)], True
+
+
 def search_products(context: ToolContext, args: SearchProductsInput) -> dict[str, Any]:
     rows = repo.all_products(context.connection)
     if args.category:
@@ -92,9 +105,7 @@ def search_products(context: ToolContext, args: SearchProductsInput) -> dict[str
     if args.electronics is not None:
         rows = [r for r in rows if r["electronics"] == int(args.electronics)]
 
-    terms = set(analyze(args.query or ""))
-    if terms:
-        rows = [r for r in rows if terms <= set(analyze(r["search_text"]))]
+    rows, partial = _match_terms(rows, set(analyze(args.query or "")))
 
     def in_budget(row: sqlite3.Row, price: Decimal) -> bool:
         above_min = args.min_price is None or price >= args.min_price
@@ -120,6 +131,12 @@ def search_products(context: ToolContext, args: SearchProductsInput) -> dict[str
         ]
     if not selected:
         result["note"] = "Nothing in the catalog matches. Do not suggest products from memory."
+    elif partial:
+        result["partial_match"] = True
+        result["note"] = (
+            "Only some of the search words matched. If the customer asked for a specific type of "
+            "instrument, these products may be something else: check before offering them."
+        )
     return result
 
 

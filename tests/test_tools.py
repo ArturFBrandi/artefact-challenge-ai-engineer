@@ -63,6 +63,22 @@ class TestCatalog:
         result = call(context, "search_products", query="violoes 7 cordas", limit=12)
         assert result["total_matches"] == 4  # the fifth one, #113, is discontinued
 
+    def test_extra_words_do_not_hide_the_catalog(self, context):
+        result = call(context, "search_products", query="violão nylon barato")
+        assert result["total_matches"] > 0
+        assert result["partial_match"] is True
+
+    def test_full_matches_are_not_flagged_as_partial(self, context):
+        assert "partial_match" not in call(context, "search_products", query="violão nylon")
+
+    def test_two_word_search_for_an_absent_instrument_is_flagged(self, context):
+        result = call(context, "search_products", query="saxofone estudante")
+        assert result["total_matches"] == 0 or result["partial_match"] is True
+
+    @pytest.mark.parametrize("name", ["saxofone", "violino", "flauta transversal", "clarinete"])
+    def test_absent_instruments_are_not_matched_by_name(self, context, name):
+        assert call(context, "get_product", name_or_id=name)["error"] == "product_not_found"
+
     def test_string_and_electronics_filters(self, context):
         result = call(
             context, "search_products", category="Violões", strings="steel", electronics=True
@@ -289,6 +305,16 @@ class TestOrders:
         third = call(context, "create_handoff", kind="human_request", summary="Wants a person")
         assert first["protocol"] == second["protocol"] != third["protocol"]
         assert first["response_deadline"] == "24 business hours"
+
+    def test_handoff_does_not_block_other_conversations(self, context, db_path):
+        call(context, "create_handoff", kind="complaint", summary="Late delivery")
+        other = connect(db_path)
+        other.execute("PRAGMA busy_timeout = 0")
+        other.execute(
+            "INSERT INTO sessions (session_id, created_at, last_seen_at) VALUES ('o', 'x', 'x')"
+        )
+        other.commit()
+        other.close()
 
     def test_handoff_summary_is_redacted(self, context):
         call(context, "create_handoff", kind="complaint", summary="Call me on (67) 99999-1234")

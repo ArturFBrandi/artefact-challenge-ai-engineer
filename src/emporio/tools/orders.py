@@ -198,12 +198,18 @@ def register_handoff(context: ToolContext, kind: str, summary: str) -> dict[str,
     if existing:
         protocol = existing["protocol"]
     else:
-        count = context.connection.execute("SELECT COUNT(*) FROM handoffs").fetchone()[0]
-        protocol = f"EM-{now:%Y%m%d}-{count + 1:04d}"
-        context.connection.execute(
-            "INSERT INTO handoffs VALUES (?, ?, ?, ?, ?)",
-            (protocol, session_id, kind, redact(summary), now.isoformat()),
-        )
+        # One statement, so concurrent handoffs cannot take the same number.
+        protocol = context.connection.execute(
+            """
+            INSERT INTO handoffs
+            SELECT ? || printf('%04d', COUNT(*) + 1), ?, ?, ?, ? FROM handoffs
+            RETURNING protocol
+            """,
+            (f"EM-{now:%Y%m%d}-", session_id, kind, redact(summary), now.isoformat()),
+        ).fetchone()["protocol"]
+        # Commit now: the turn may keep waiting on the model, and an open write
+        # transaction would block every other conversation.
+        context.connection.commit()
 
     status = store_status(now, context.facts)
     return {
