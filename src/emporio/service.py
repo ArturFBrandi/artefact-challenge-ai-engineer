@@ -18,6 +18,7 @@ from emporio.agent.validators import (
     leaked_contacts,
     number_tokens,
     unsupported_amounts,
+    words_in,
 )
 from emporio.clock import Clock
 from emporio.config import Settings
@@ -87,11 +88,24 @@ class AgentService:
         self._base_evidence = number_tokens(
             yaml.safe_dump(rules.model_dump(mode="json")) + facts.model_dump_json()
         )
+        self._vocabulary = words_in(facts.model_dump_json()) | self._store_vocabulary()
 
     def _build_retriever(self) -> Retriever:
         with session_scope(self._settings.db_path) as connection:
             rows = connection.execute("SELECT * FROM policy_sections").fetchall()
         return Bm25Retriever([Section(r["section_id"], r["title"], r["body"]) for r in rows])
+
+    def _store_vocabulary(self) -> set[str]:
+        """Words that are normal here though rare in Portuguese: brands, woods, models."""
+        with session_scope(self._settings.db_path) as connection:
+            rows = connection.execute(
+                "SELECT name || ' ' || description AS text FROM products "
+                "UNION ALL SELECT name FROM categories "
+                "UNION ALL SELECT title || ' ' || body FROM policy_sections"
+            ).fetchall()
+            specs = connection.execute("SELECT specs FROM products").fetchall()
+        values = " ".join(str(v) for row in specs for v in json.loads(row["specs"]).values())
+        return words_in(" ".join(row["text"] for row in rows) + " " + values)
 
     def create_session(self) -> str:
         with session_scope(self._settings.db_path) as connection:
@@ -111,7 +125,7 @@ class AgentService:
     def _context_block(self, session: Session, connection: Any) -> str:
         now = self._clock.now()
         status = store_status(now, self._facts)
-        lines = [f"Current date and time at the store: {now:%A, %Y-%m-%d %H:%M}."]
+        lines = [f"Current date and time at the store: {now:%A, %d/%m/%Y %H:%M}."]
         if status.is_open:
             assert status.closes_at is not None
             lines.append(f"The store is open and closes at {status.closes_at:%H:%M}.")
@@ -119,7 +133,7 @@ class AgentService:
             assert status.next_opening is not None
             lines.append(
                 "The store is CLOSED. The team returns "
-                f"{status.next_opening:%A, %Y-%m-%d at %H:%M}. Tell the customer this in your "
+                f"{status.next_opening:%A, %d/%m/%Y at %H:%M}. Tell the customer this in your "
                 "first reply, and whenever you hand off to the team. You can keep helping."
             )
         customer_id = session.verified_customer_id
@@ -181,10 +195,12 @@ class AgentService:
                 logger.warning("LLM failure: %s", error)
                 outcome, reply = "llm_failure", unavailable_reply(self._facts)
 
+            flags = language_problems(reply, self._vocabulary | words_in(text) | loop.words())
             store.append_turn(connection, session.session_id, turn, text, reply, now)
             store.save_session(connection, session, now)
 
         debug = self._record(session.session_id, turn, loop, outcome, started)
+        debug["language_flags"] = flags
         return TurnResult(session.session_id, turn, reply, debug)
 
     def _validated(
@@ -208,7 +224,9 @@ class AgentService:
             reply = loop.reply or ""
             bad_amounts = unsupported_amounts(reply, evidence)
             bad_contacts = leaked_contacts(reply, allowed_contacts)
-            bad_language = language_problems(reply)
+            bad_language = language_problems(
+                reply, self._vocabulary | words_in(text) | loop.words()
+            )
             if not bad_amounts and not bad_contacts and not bad_language:
                 session.evidence = " ".join(sorted(evidence - self._base_evidence))
                 return clean_format(reply), "answered" if attempt == 0 else "corrected"
@@ -219,6 +237,9 @@ class AgentService:
                 bad_language,
             )
             if attempt == SAFE_RETRY_LIMIT:
+                if not bad_amounts and not bad_contacts:
+                    # A stray word is better than refusing to answer.
+                    return clean_format(reply), "corrected"
                 break
             messages.append(
                 {

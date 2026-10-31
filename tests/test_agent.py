@@ -57,7 +57,15 @@ class TestNumbers:
 class TestLanguage:
     @pytest.mark.parametrize(
         "reply",
-        ["Quer que euCOMPARE as opções?", "Nada está announcement/garantido", "Você is the best"],
+        [
+            "Quer que euCOMPARE as opções?",
+            "Nada está announcement/garantido",
+            "Você is the best",
+            "SemAcute ele, o valor é esse",
+            "Quer_lookup alguma coisa?",
+            "Cabe só paying com PIX",
+            "Que Erfahrung chata, não?",
+        ],
     )
     def test_glitches_are_found(self, reply):
         assert language_problems(reply)
@@ -68,10 +76,11 @@ class TestLanguage:
             "Quer que eu compare as opções? Não tem problema.",
             "The price is R$ 699,90. Would you like more details?",
             "Takamine GD20 Dreadnought com PIX e MIDI",
+            "Já encaminhei seu caso para a equipe, com cordas de nylon.",
         ],
     )
     def test_clean_replies_pass(self, reply):
-        assert language_problems(reply) == []
+        assert language_problems(reply, {"takamine", "dreadnought"}) == []
 
     def test_markdown_emphasis_is_removed(self):
         assert clean_format("Me passa o **número** do pedido") == "Me passa o número do pedido"
@@ -277,6 +286,23 @@ class TestLanguageRetry:
         assert result.reply == "Quer que eu compare?"
         assert result.debug["outcome"] == "corrected"
 
+    def test_word_rare_in_portuguese_triggers_a_rewrite(self, make_service):
+        service, _ = make_service(["Não, só paying com PIX", "Não, só pagando com PIX"])
+        result = service.handle_message(service.create_session(), "oi")
+        assert result.reply == "Não, só pagando com PIX"
+        assert result.debug["language_flags"] == []
+
+    def test_store_vocabulary_is_not_flagged(self, make_service):
+        reply = "Não, o Takamine tem tampo em Spruce"
+        service, _ = make_service([reply])
+        assert service.handle_message(service.create_session(), "oi").reply == reply
+
+    def test_persistent_glitch_is_sent_and_reported(self, make_service):
+        service, _ = make_service(["Não, só paying", "Não, ainda paying"])
+        result = service.handle_message(service.create_session(), "oi")
+        assert result.reply == "Não, ainda paying"
+        assert result.debug["language_flags"] == ["paying"]
+
     def test_bold_is_removed_before_sending(self, make_service):
         service, _ = make_service(["Me passa o **pedido**"])
         result = service.handle_message(service.create_session(), "oi")
@@ -361,7 +387,7 @@ class TestContextBlock:
         service, provider = make_service(["oi"])
         service.handle_message(service.create_session(), "oi")
         system = provider.calls[0][0]["content"]
-        assert "Wednesday, 2026-03-25 10:00" in system
+        assert "Wednesday, 25/03/2026 10:00" in system
         assert "open and closes at 18:00" in system
         assert "{{context}}" not in system
 
@@ -370,7 +396,7 @@ class TestContextBlock:
         service, provider = make_service(["oi"], at=sunday)
         service.handle_message(service.create_session(), "oi")
         assert "CLOSED" in provider.calls[0][0]["content"]
-        assert "Monday, 2026-03-30 at 09:00" in provider.calls[0][0]["content"]
+        assert "Monday, 30/03/2026 at 09:00" in provider.calls[0][0]["content"]
 
 
 def test_trace_has_no_customer_text(make_service, settings):

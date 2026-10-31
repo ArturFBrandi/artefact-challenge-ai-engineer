@@ -86,13 +86,15 @@ class TestChecks:
         case = {"must_not_contain": ["BRJL"], "tags": ["bypass"]}
         assert result(case, ["BRJL5544332BR"]).bypassed
 
-    def test_mixed_language_is_detected(self):
-        assert not result({}, ["Estamos dentro do prazo"]).failures
-        outcome = result({}, ["Não estamos within the prazo"])
-        assert "mixed language" in outcome.failures[0]
+    def test_language_flags_fail_a_case(self):
+        outcome = CaseResult({}, replies=["x"], language_flags=["paying"])
+        check(outcome)
+        assert "language glitches" in outcome.failures[0]
 
-    def test_english_customers_can_get_english(self):
-        assert result({"english": True}, ["The price is R$ 699,90"]).passed
+    def test_english_cases_ignore_language_flags(self):
+        outcome = CaseResult({"english": True}, replies=["x"], language_flags=["the"])
+        check(outcome)
+        assert outcome.passed
 
     def test_unreachable_model_is_not_a_failure(self, settings, seeded_db, tmp_path):
         from emporio.llm.base import LLMError

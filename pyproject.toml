@@ -14,6 +14,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rank-bm25>=0.2.2",
     "snowballstemmer>=2.2",
+    "wordfreq>=3.1.1",
 ]
 
 [dependency-groups]
@@ -53,5 +54,5 @@ mypy_path = "src"
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["rank_bm25.*", "snowballstemmer.*", "pymupdf.*", "fastembed.*"]
+module = ["rank_bm25.*", "snowballstemmer.*", "pymupdf.*", "fastembed.*", "wordfreq.*"]
 ignore_missing_imports = true

@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from emporio.agent.validators import words_in
 from emporio.llm.base import LLMProvider, Usage
 from emporio.tools.base import Tool, ToolContext, ToolRun, run_tool
 
@@ -14,6 +15,10 @@ class LoopResult:
     input_tokens: int = 0
     output_tokens: int = 0
     llm_calls: int = 0
+
+    def words(self) -> set[str]:
+        """Words the tools returned in this turn."""
+        return words_in(" ".join(run.output for run in self.runs))
 
     def add_usage(self, usage: Usage) -> None:
         self.input_tokens += usage.input_tokens

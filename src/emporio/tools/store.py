@@ -30,7 +30,7 @@ def get_store_status(context: ToolContext, _: NoInput) -> dict[str, Any]:
     return {
         "open_now": status.is_open,
         "closes_at": status.closes_at.strftime("%H:%M") if status.closes_at else None,
-        "next_opening": status.next_opening.strftime("%A %Y-%m-%d %H:%M")
+        "next_opening": status.next_opening.strftime("%A %d/%m/%Y %H:%M")
         if status.next_opening
         else None,
         "hours": "Monday to Friday 09:00-18:00, Saturday 09:00-13:00, closed Sundays and holidays",

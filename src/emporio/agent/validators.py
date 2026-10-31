@@ -3,6 +3,8 @@
 import re
 from decimal import Decimal, InvalidOperation
 
+from wordfreq import zipf_frequency
+
 from emporio.memory.redact import EMAIL, PHONE
 from emporio.text import normalize_email, normalize_phone
 
@@ -16,15 +18,32 @@ ENGLISH_WORDS = re.compile(
     r"\b(the|we're|within|would|your|you|details|please|refund|window|store|announcement)\b"
 )
 PORTUGUESE_MARKERS = re.compile(r"\b(não|você|está|são|também|pra|para|com)\b")
-GLUED_CAPITALS = re.compile(r"[a-zà-ÿ][A-Z]{3,}")
+GLUED_WORDS = re.compile(r"[A-Za-zÀ-ÿ]*(?:[a-zà-ÿ][A-Z]|[A-Za-zÀ-ÿ]_[A-Za-zÀ-ÿ])[A-Za-zÀ-ÿ_]*")
+WORD = re.compile(r"[A-Za-zÀ-ÿ]+")
+RARE_IN_PORTUGUESE = 2.0  # wordfreq Zipf scale, chosen on real replies
+MIN_WORD_LENGTH = 4
+# Common in this store's replies, but rare in general Portuguese text.
+KNOWN_FORMS = frozenset({"encaminho", "encaminhei", "encaminhamos", "encaminhado"})
 
 
-def language_problems(reply: str) -> list[str]:
-    """Generation glitches seen live: 'euCOMPARE', or English words in a Portuguese reply."""
-    problems = [m[0] for m in GLUED_CAPITALS.finditer(reply)]
+def words_in(text: str) -> set[str]:
+    return {word.lower() for word in WORD.findall(text)}
+
+
+def language_problems(reply: str, known: frozenset[str] | set[str] = frozenset()) -> list[str]:
+    """Generation glitches seen live: 'SemAcute', 'Quer_lookup', 'paying' in a Portuguese reply.
+
+    In Portuguese replies, a word is suspect when it is rare in the language and did not come from
+    the catalog, the tools or the customer. No list of bad words can cover what the model invents.
+    """
+    problems = sorted({m[0] for m in GLUED_WORDS.finditer(reply)})
     lowered = reply.lower()
-    if PORTUGUESE_MARKERS.search(lowered):
-        problems += sorted({m[0] for m in ENGLISH_WORDS.finditer(lowered)})
+    if not PORTUGUESE_MARKERS.search(lowered):
+        return problems
+    problems += sorted({m[0] for m in ENGLISH_WORDS.finditer(lowered)})
+    for word in sorted(words_in(lowered) - known - KNOWN_FORMS):
+        if len(word) >= MIN_WORD_LENGTH and zipf_frequency(word, "pt") < RARE_IN_PORTUGUESE:
+            problems.append(word)
     return problems
 
 

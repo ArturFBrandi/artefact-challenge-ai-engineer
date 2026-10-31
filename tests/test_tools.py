@@ -168,7 +168,7 @@ class TestStore:
         context.clock = FrozenClock(datetime.fromisoformat("2026-03-29T10:00:00-04:00"))
         result = call(context, "get_store_status")
         assert result["open_now"] is False
-        assert result["next_opening"].startswith("Monday 2026-03-30")
+        assert result["next_opening"].startswith("Monday 30/03/2026")
 
     def test_policy_search_returns_sections(self, context):
         result = call(context, "search_policies", query="trocar por outra cor")

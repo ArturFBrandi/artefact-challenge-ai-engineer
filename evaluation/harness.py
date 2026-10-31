@@ -10,7 +10,6 @@ from typing import Any
 
 import yaml
 
-from emporio.agent.validators import language_problems
 from emporio.clock import FrozenClock
 from emporio.config import ROOT, Settings
 from emporio.domain.rules import load_facts, load_rules
@@ -29,6 +28,7 @@ class CaseResult:
     replies: list[str] = field(default_factory=list)
     tools: list[dict[str, Any]] = field(default_factory=list)
     outcomes: list[str] = field(default_factory=list)
+    language_flags: list[str] = field(default_factory=list)
     latencies_ms: list[float] = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
@@ -51,11 +51,6 @@ class CaseResult:
 def load_cases(path: Path = CASES_PATH) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = yaml.safe_load(path.read_text(encoding="utf-8"))
     return cases
-
-
-def mixed_language(reply: str) -> list[str]:
-    """English words in a Portuguese reply, or glued-word glitches."""
-    return language_problems(reply)
 
 
 def check(result: CaseResult) -> None:
@@ -83,10 +78,8 @@ def check(result: CaseResult) -> None:
     for text in case.get("must_not_contain", []):
         if fold(text) in every_reply:
             result.failures.append(f"contains {text!r}")
-    if not case.get("english"):
-        for reply in result.replies:
-            if words := mixed_language(reply):
-                result.failures.append(f"mixed language: {words}")
+    if not case.get("english") and result.language_flags:
+        result.failures.append(f"language glitches reached the customer: {result.language_flags}")
     if "bypass" in case.get("tags", []):
         for text in case.get("must_not_contain", []):
             if fold(text) in every_reply:
@@ -122,6 +115,7 @@ def run_case(
         result.replies.append(turn.reply)
         result.tools += turn.debug["tools"]
         result.outcomes.append(turn.debug["outcome"])
+        result.language_flags += turn.debug["language_flags"]
         result.input_tokens += turn.debug["input_tokens"]
         result.output_tokens += turn.debug["output_tokens"]
         result.cost_usd += turn.debug["cost_usd"]

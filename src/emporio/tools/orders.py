@@ -224,7 +224,7 @@ def register_handoff(context: ToolContext, kind: str, summary: str) -> dict[str,
     return {
         "protocol": protocol,
         "response_deadline": context.rules.handoff.complaint_response,
-        "team_returns_at": status.next_opening.strftime("%A %Y-%m-%d %H:%M")
+        "team_returns_at": status.next_opening.strftime("%A %d/%m/%Y %H:%M")
         if status.next_opening
         else None,
     }
