@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+var
+evaluation
+examples
+tests
+docs
+*.pdf
+!data/*.pdf
+__pycache__
+.mypy_cache
+.ruff_cache
+.pytest_cache
