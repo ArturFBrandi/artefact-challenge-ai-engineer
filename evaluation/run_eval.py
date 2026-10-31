@@ -15,7 +15,7 @@ from emporio.llm.factory import ConfigurationError, build_provider
 from evaluation.harness import CaseResult, load_cases, render_report, run_case
 
 RESULTS = ROOT / "evaluation" / "results" / "latest.md"
-WORKERS = 4
+WORKERS = 1  # MiniMax Token Plans rate-limit parallel calls
 
 
 def git_commit() -> str:
@@ -37,6 +37,7 @@ def main() -> int:
         print(f"NOT RUN: {error}\nNo evaluation results were produced.", file=sys.stderr)
         return 2
 
+    patient = settings.model_copy(update={"llm_max_retries": 6})
     cases = load_cases()
     if arguments.only:
         wanted = set(arguments.only.split(","))
@@ -49,14 +50,15 @@ def main() -> int:
         run = partial(
             run_case,
             settings=settings,
-            provider_factory=lambda: build_provider(settings),
+            provider_factory=lambda: build_provider(patient),
             seed_db=seed,
             workdir=workdir,
         )
         results: list[CaseResult] = []
         with ThreadPoolExecutor(WORKERS) as pool:
             for result in pool.map(run, cases):
-                print(f"{'PASS' if result.passed else 'FAIL'} {result.case['id']}", flush=True)
+                label = "SKIP" if result.not_evaluated else "PASS" if result.passed else "FAIL"
+                print(f"{label} {result.case['id']}", flush=True)
                 results.append(result)
 
     header = (
@@ -70,7 +72,10 @@ def main() -> int:
         print(f"\nWrote {RESULTS}")
     print(report)
     critical_failed = any(r.case.get("critical") and not r.passed for r in results)
-    return 1 if critical_failed else 0
+    incomplete = any(r.not_evaluated for r in results)
+    if incomplete:
+        print("INCOMPLETE: some cases could not reach the model.", file=sys.stderr)
+    return 1 if critical_failed or incomplete else 0
 
 
 if __name__ == "__main__":

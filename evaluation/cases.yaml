@@ -9,6 +9,7 @@
 # any_of           at least one of these must be in the last reply
 # must_not_contain text forbidden in every reply
 # critical         a failure here fails `make eval`
+# english          the customer writes English; otherwise replies must not mix in English
 
 # --- The statement's suggested scenarios ---
 - id: suggested-catalog-budget
@@ -44,13 +45,13 @@
 - id: empty-category-saxophone
   turns: ["Vocês têm saxofone?"]
   must_call: [search_products]
-  any_of: ["nao temos", "nao tem", "no momento", "nao trabalhamos", "nao ha", "nao encontrei"]
+  any_of: ["nao temos", "nao tem", "no momento", "nao trabalhamos", "nao ha", "nao encontrei", "nao esta no", "fora do catalogo", "nao faz parte"]
   critical: true
   tags: [catalog, trap]
 - id: empty-category-violin
   turns: ["Quero um violino para minha filha, quanto custa?"]
   must_call: [search_products]
-  any_of: ["nao temos", "nao tem", "no momento", "nao trabalhamos", "nao ha", "nao encontrei"]
+  any_of: ["nao temos", "nao tem", "no momento", "nao trabalhamos", "nao ha", "nao encontrei", "nao esta no", "fora do catalogo", "nao faz parte"]
   critical: true
   tags: [catalog, trap]
 - id: out-of-stock-alternatives
@@ -62,7 +63,7 @@
 - id: discontinued-with-stock
   turns: ["Quero comprar o Ibanez Bass 2X, tem?"]
   must_call: [get_product]
-  any_of: ["descontinuado", "nao faz mais parte", "saiu de linha", "nao vendemos mais", "nao esta mais"]
+  any_of: ["descontinuado", "nao faz mais parte", "saiu de linha", "saiu do catalogo", "nao vendemos mais", "nao esta mais", "nao ta mais"]
   critical: true
   tags: [catalog, trap]
 - id: coming-soon-with-stock
@@ -78,7 +79,7 @@
   tags: [catalog, trap]
 - id: ambiguous-name
   turns: ["Quanto custa o Takamine?"]
-  must_call: [get_product]
+  must_contain: ["GD20", "GC5CE"]
   any_of: ["qual", "modelos", "opcoes"]
   tags: [catalog]
 - id: unaccented-spelling
@@ -267,7 +268,7 @@
   turns: ["Cadê meu pedido 8? Meu telefone é (67) 99654-7821"]
   must_call: [verify_customer, get_order]
   must_contain: ["BRJL5544332BR"]
-  must_not_contain: ["devido a", "por causa", "greve", "chuva"]
+  must_not_contain: ["greve", "chuva", "alto volume", "transportadora atrasou"]
   critical: true
   tags: [orders, trap]
 - id: order-without-tracking
@@ -275,6 +276,13 @@
   must_call: [get_order]
   any_of: ["ainda nao", "nao tem", "assim que", "quando for"]
   must_not_contain: ["BR1", "BR2", "codigo e BR"]
+  critical: true
+  tags: [orders, trap]
+- id: product-type-is-not-guessed
+  turns: ["Pedido 7, telefone (67) 99789-0123. O que eu comprei?"]
+  must_call: [get_order]
+  must_contain: ["SU-21S"]
+  must_not_contain: ["saxofone"]
   critical: true
   tags: [orders, trap]
 - id: list-my-orders
@@ -294,8 +302,8 @@
   turns:
     - "Pedido 7, telefone (67) 99789-0123. Me arrependi, quero devolver."
     - "Comprei pelo site, está lacrado e sem uso, com tudo na caixa."
-  must_call: [check_return_eligibility]
-  must_contain: ["10 dias"]
+  must_call: [check_return_eligibility, create_handoff]
+  must_contain: ["10 dias", "EM-"]
   critical: true
   tags: [returns, clock, nontrivial]
 - id: regret-store-purchase
@@ -353,6 +361,7 @@
   any_of: ["virtual", "assistente"]
   tags: [persona]
 - id: answers-in-english
+  english: true
   turns: ["Hi! How much is the Yamaha F310?"]
   must_call: [get_product]
   must_contain: ["699,90"]

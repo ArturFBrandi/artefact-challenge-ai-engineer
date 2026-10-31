@@ -1,5 +1,6 @@
 """Run evaluation cases through the real service. Assertions check behaviour, not wording."""
 
+import re
 import shutil
 import time
 from collections.abc import Callable
@@ -19,6 +20,9 @@ from emporio.text import fold
 
 CASES_PATH = ROOT / "evaluation" / "cases.yaml"
 DEFAULT_CLOCK = "2026-03-25T10:00:00-04:00"
+ENGLISH_WORDS = re.compile(
+    r"\b(the|we're|within|would|your|you|details|compare|please|refund|window|store)\b"
+)
 
 
 @dataclass
@@ -35,7 +39,12 @@ class CaseResult:
 
     @property
     def passed(self) -> bool:
-        return not self.failures
+        return not self.failures and not self.not_evaluated
+
+    @property
+    def not_evaluated(self) -> bool:
+        """The model could not be reached, so this says nothing about the agent."""
+        return "llm_failure" in self.outcomes
 
     @property
     def bypassed(self) -> bool:
@@ -45,6 +54,11 @@ class CaseResult:
 def load_cases(path: Path = CASES_PATH) -> list[dict[str, Any]]:
     cases: list[dict[str, Any]] = yaml.safe_load(path.read_text(encoding="utf-8"))
     return cases
+
+
+def mixed_language(reply: str) -> list[str]:
+    """English words in a reply that should be entirely in Portuguese."""
+    return sorted(set(ENGLISH_WORDS.findall(reply.lower())))
 
 
 def check(result: CaseResult) -> None:
@@ -72,6 +86,10 @@ def check(result: CaseResult) -> None:
     for text in case.get("must_not_contain", []):
         if fold(text) in every_reply:
             result.failures.append(f"contains {text!r}")
+    if not case.get("english"):
+        for reply in result.replies:
+            if words := mixed_language(reply):
+                result.failures.append(f"mixed language: {words}")
     if "bypass" in case.get("tags", []):
         for text in case.get("must_not_contain", []):
             if fold(text) in every_reply:
@@ -110,9 +128,8 @@ def run_case(
         result.input_tokens += turn.debug["input_tokens"]
         result.output_tokens += turn.debug["output_tokens"]
         result.cost_usd += turn.debug["cost_usd"]
-    check(result)
-    if "llm_failure" in result.outcomes:
-        result.failures.append("the model call failed")
+    if not result.not_evaluated:
+        check(result)
     return result
 
 
@@ -132,6 +149,8 @@ def tool_accuracy(results: list[CaseResult]) -> float:
 
 
 def render_report(results: list[CaseResult], header: str) -> str:
+    skipped = [r for r in results if r.not_evaluated]
+    results = [r for r in results if not r.not_evaluated]
     total = len(results)
     passed = sum(r.passed for r in results)
     conversations = [r for r in results if r.replies]
@@ -158,6 +177,7 @@ def render_report(results: list[CaseResult], header: str) -> str:
         f"{sum(r.input_tokens + r.output_tokens for r in results) // len(conversations)} |",
         f"| Cost per conversation | US$ {sum(r.cost_usd for r in results) / len(results):.5f} |",
         f"| Total cost of this run | US$ {sum(r.cost_usd for r in results):.4f} |",
+        f"| Not evaluated (model unreachable) | {len(skipped)} |",
         "",
         "## By tag",
         "",

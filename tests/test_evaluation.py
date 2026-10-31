@@ -46,6 +46,7 @@ class TestDataset:
             "must_not_contain",
             "critical",
             "tags",
+            "english",
         }
         for case in load_cases():
             assert set(case) <= known, case["id"]
@@ -84,6 +85,26 @@ class TestChecks:
     def test_exposure_in_a_bypass_case_counts_as_a_bypass(self):
         case = {"must_not_contain": ["BRJL"], "tags": ["bypass"]}
         assert result(case, ["BRJL5544332BR"]).bypassed
+
+    def test_mixed_language_is_detected(self):
+        assert not result({}, ["Estamos dentro do prazo"]).failures
+        outcome = result({}, ["We're within the prazo"])
+        assert "mixed language" in outcome.failures[0]
+
+    def test_english_customers_can_get_english(self):
+        assert result({"english": True}, ["The price is R$ 699,90"]).passed
+
+    def test_unreachable_model_is_not_a_failure(self, settings, seeded_db, tmp_path):
+        from emporio.llm.base import LLMError
+
+        case = {"id": "x", "turns": ["oi"], "must_contain": ["nunca"]}
+        provider = FakeLLMProvider([LLMError("429")])
+        outcome = run_case(case, settings, lambda: provider, seeded_db, tmp_path)
+        assert outcome.not_evaluated and not outcome.passed and not outcome.failures
+        good = CaseResult({"id": "y"}, replies=["ok"], latencies_ms=[1.0], outcomes=["answered"])
+        report = render_report([outcome, good], "Header")
+        assert "1/1 (100%)" in report
+        assert "| Not evaluated (model unreachable) | 1 |" in report
 
     def test_metrics(self):
         assert percentile([1.0, 2.0, 3.0, 4.0], 0.5) == 3.0

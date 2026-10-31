@@ -247,7 +247,9 @@ class TestOrders:
         result = call(context, "get_order", order_id=8)
         assert result["tracking_code"] == "BRJL5544332BR"
         assert result["days_overdue"] == 25
-        assert result["items"] == [{"name": "Kala KA-C Concert Mogno", "quantity": 1}]
+        assert result["items"] == [
+            {"name": "Kala KA-C Concert Mogno", "category": "Ukuleles", "quantity": 1}
+        ]
 
     def test_verified_customer_cannot_see_others(self, context):
         call(context, "verify_customer", **ANA)

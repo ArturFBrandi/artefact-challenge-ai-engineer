@@ -249,8 +249,9 @@ TOOLS = [
     Tool(
         "check_return_eligibility",
         "Decide whether an order of the verified customer can be returned or exchanged. The "
-        "verdict is final: eligible, ineligible, needs_info (ask what it says) or needs_human "
-        "(create a handoff). Always use it rather than judging dates yourself.",
+        "verdict is final: eligible (create a handoff so the team arranges it), ineligible, "
+        "needs_info (ask what it says) or needs_human (create a handoff). Always use it rather "
+        "than judging dates yourself.",
         ReturnInput,
         check_return_eligibility,
     ),

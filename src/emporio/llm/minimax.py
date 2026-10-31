@@ -20,7 +20,9 @@ from pydantic import SecretStr
 from emporio.llm.base import LLMAuthError, LLMError, LLMResponse, ToolCall, Usage
 
 THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL)
-RETRYABLE_CODES = frozenset({1000, 1001, 1002, 1024, 1033, 1039, 2045, 2046, 2047, 2064, 2066})
+RETRYABLE_CODES = frozenset(
+    {1000, 1001, 1002, 1024, 1033, 1039, 2045, 2046, 2047, 2062, 2064, 2066}
+)
 ACCOUNT_CODES = frozenset({1004, 1008, 2049, 2053, 2056, 2061, 2067, 2068, 2069})
 
 
@@ -60,7 +62,7 @@ class MiniMaxProvider:
             except _Retryable as error:
                 if attempt == self._max_retries:
                     raise LLMError(str(error)) from error
-                time.sleep(min(8.0, 2.0**attempt) * (0.5 + random.random() / 2))
+                time.sleep(min(30.0, 2.0**attempt) * (0.5 + random.random() / 2))
         raise LLMError("unreachable")
 
     def _call(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse:

@@ -75,7 +75,8 @@ def orders_for_customer(connection: sqlite3.Connection, customer_id: int) -> lis
 
 def order_items(connection: sqlite3.Connection, order_id: int) -> list[dict[str, Any]]:
     rows = connection.execute(
-        "SELECT p.name, i.quantity FROM order_items i JOIN products p USING (product_id) "
+        "SELECT p.name, c.name AS category, i.quantity FROM order_items i "
+        "JOIN products p USING (product_id) JOIN categories c USING (category_id) "
         "WHERE i.order_id = ?",
         (order_id,),
     ).fetchall()
