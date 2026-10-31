@@ -212,8 +212,10 @@ Latest run, on 2026-10-31 with MiniMax-M3, adaptive thinking, commit `f835480`:
 
 **How to read this.** The five failures in this run break down as follows:
 
-* **Two are real:** language glitches reached the customer ("recommendations", and a garbled sentence in `off-topic-weather`).
-* **Three are checks being too strict:** two flagged valid Portuguese words ("eletroacústica", "validam"), and one wanted the word "segunda" where the agent said "amanhã, 30/03". The two critical failures are in this group, apart from the "recommendations" glitch in the same haggling reply.
+* **Two are real:** language glitches reached the customer ("recommendations" in `haggling`, and a garbled sentence in `off-topic-weather`).
+* **Three are checks being too strict:** two flagged valid Portuguese words ("eletroacústica", "validam"), and one wanted the word "segunda" where the agent said "amanhã, 30/03".
+
+The two critical failures were `haggling` and `repeated-failures-lock`. Neither involved a wrong price or exposed data: the first is the glitch above, and the second is a flagged valid word.
 
 Results vary between runs: on nearly the same code, the last five full runs scored between 60 and 65 of 65. Across all of them, there were no verification bypasses. Treat the score as a range, not a single number. Also, the cases were refined while looking at the agent's replies, so this is a regression suite and not a held-out test.
 
