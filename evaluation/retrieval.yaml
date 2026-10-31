@@ -1,0 +1,30 @@
+# Question -> sections that answer it. Paraphrased and colloquial on purpose: most avoid the
+# manual's own words.
+- {q: "vocês abrem sábado?", expected: ["2"]}
+- {q: "até que horas fica aberto hoje?", expected: ["2"]}
+- {q: "funciona no feriado?", expected: ["2"]}
+- {q: "dá pra pagar no pix?", expected: ["3"]}
+- {q: "aceitam boleto? demora pra compensar?", expected: ["3"]}
+- {q: "qual o valor mínimo da parcela em 10 vezes?", expected: ["3.1"]}
+- {q: "posso pagar metade no pix e metade no cartão?", expected: ["3.1"]}
+- {q: "desisti da compra pela internet, tenho quantos dias pra devolver?", expected: ["4.1"]}
+- {q: "quem paga o frete quando eu devolvo?", expected: ["4.1"]}
+- {q: "em quanto tempo recebo meu dinheiro de volta?", expected: ["4.1"]}
+- {q: "meu violão veio com defeito de fábrica, e agora?", expected: ["4.2", "8.1"]}
+- {q: "derrubei a guitarra e quebrou, a troca cobre?", expected: ["4.2", "8.3"]}
+- {q: "quero trocar pela cor preta, pode?", expected: ["4.3"]}
+- {q: "instrumento que fiz regulagem especial pode ser trocado?", expected: ["4.4"]}
+- {q: "posso trocar a boquilha do saxofone?", expected: ["4.4"]}
+- {q: "o frete é grátis em campo grande?", expected: ["5.1"]}
+- {q: "qual o prazo de entrega para o interior?", expected: ["5.2"]}
+- {q: "a encomenda chegou amassada, o que eu faço?", expected: ["5.2"]}
+- {q: "como rastreio minha entrega?", expected: ["5.3"]}
+- {q: "quando é a black friday de vocês?", expected: ["6.1"]}
+- {q: "dá pra juntar o desconto do pix com a promoção?", expected: ["6.2"]}
+- {q: "acabou o produto da promoção, vocês guardam o preço?", expected: ["6.2"]}
+- {q: "vocês vendem encordoamento e palheta?", expected: ["1", "7.1"]}
+- {q: "qual a garantia dos instrumentos?", expected: ["8.1", "8.2"]}
+- {q: "a garantia cobre o desgaste dos trastes?", expected: ["8.3"]}
+- {q: "como faço para apagar meus dados pessoais?", expected: ["9"]}
+- {q: "qual o cnpj da loja?", expected: ["1.2"]}
+- {q: "quero fazer uma reclamação, em quanto tempo me respondem?", expected: ["7.3"]}
