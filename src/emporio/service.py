@@ -247,7 +247,8 @@ class AgentService:
                     "content": "[Automatic check, not from the customer] Your reply was not sent. "
                     f"These values have no source: {bad_amounts}. Personal contact details "
                     f"found: {len(bad_contacts)}. Foreign words or typing errors: {bad_language}. "
-                    "Use the tools or remove them, and rewrite the reply for the customer.",
+                    "Use the tools or remove them, and rewrite the whole reply, entirely in the "
+                    "language of the customer's last message.",
                 }
             )
             run_loop(

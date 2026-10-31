@@ -20,10 +20,13 @@ ENGLISH_WORDS = re.compile(
 PORTUGUESE_MARKERS = re.compile(r"\b(não|você|está|são|também|pra|para|com)\b")
 GLUED_WORDS = re.compile(r"[A-Za-zÀ-ÿ]*(?:[a-zà-ÿ][A-Z]|[A-Za-zÀ-ÿ]_[A-Za-zÀ-ÿ])[A-Za-zÀ-ÿ_]*")
 WORD = re.compile(r"[A-Za-zÀ-ÿ]+")
+OTHER_SCRIPTS = re.compile(r"[\u0370-\u1fff\u3000-\ua4ff\uac00-\ud7af\uf900-\ufaff]+")
 RARE_IN_PORTUGUESE = 2.0  # wordfreq Zipf scale, chosen on real replies
 MIN_WORD_LENGTH = 4
 # Common in this store's replies, but rare in general Portuguese text.
-KNOWN_FORMS = frozenset({"encaminho", "encaminhei", "encaminhamos", "encaminhado"})
+KNOWN_FORMS = frozenset(
+    {"encaminho", "encaminhei", "encaminhamos", "encaminhado", "eletroacústico", "eletroacústicos"}
+)
 
 
 def words_in(text: str) -> set[str]:
@@ -36,8 +39,9 @@ def language_problems(reply: str, known: frozenset[str] | set[str] = frozenset()
     In Portuguese replies, a word is suspect when it is rare in the language and did not come from
     the catalog, the tools or the customer. No list of bad words can cover what the model invents.
     """
-    problems = sorted({m[0] for m in GLUED_WORDS.finditer(reply)})
     lowered = reply.lower()
+    glued = {m[0] for m in GLUED_WORDS.finditer(reply) if m[0].lower() not in known}
+    problems = sorted(glued) + OTHER_SCRIPTS.findall(reply)
     if not PORTUGUESE_MARKERS.search(lowered):
         return problems
     problems += sorted({m[0] for m in ENGLISH_WORDS.finditer(lowered)})

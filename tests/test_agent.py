@@ -65,6 +65,7 @@ class TestLanguage:
             "Quer_lookup alguma coisa?",
             "Cabe só paying com PIX",
             "Que Erfahrung chata, não?",
+            "O da Tagima tem mais这一问题, ops",
         ],
     )
     def test_glitches_are_found(self, reply):
@@ -77,6 +78,7 @@ class TestLanguage:
             "The price is R$ 699,90. Would you like more details?",
             "Takamine GD20 Dreadnought com PIX e MIDI",
             "Já encaminhei seu caso para a equipe, com cordas de nylon.",
+            "Temos violões eletroacústicos, e o Takamine é um deles.",
         ],
     )
     def test_clean_replies_pass(self, reply):
@@ -291,6 +293,11 @@ class TestLanguageRetry:
         result = service.handle_message(service.create_session(), "oi")
         assert result.reply == "Não, só pagando com PIX"
         assert result.debug["language_flags"] == []
+
+    def test_whatsapp_is_not_a_glued_word(self, make_service):
+        reply = "Nosso WhatsApp é (67) 3321-4500, com prazer"
+        service, _ = make_service([reply])
+        assert service.handle_message(service.create_session(), "oi").debug["outcome"] == "answered"
 
     def test_store_vocabulary_is_not_flagged(self, make_service):
         reply = "Não, o Takamine tem tampo em Spruce"
