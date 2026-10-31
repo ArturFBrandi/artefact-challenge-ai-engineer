@@ -326,6 +326,12 @@ class TestOrders:
         assert first["protocol"] == second["protocol"] != third["protocol"]
         assert first["response_deadline"] == "24 business hours"
 
+    def test_new_details_reach_the_same_handoff(self, context):
+        call(context, "create_handoff", kind="complaint", summary="Bad service")
+        call(context, "create_handoff", kind="complaint", summary="It happened yesterday")
+        row = context.connection.execute("SELECT summary FROM handoffs").fetchone()
+        assert row["summary"] == "Bad service\nIt happened yesterday"
+
     def test_handoff_does_not_block_other_conversations(self, context, db_path):
         call(context, "create_handoff", kind="complaint", summary="Late delivery")
         other = connect(db_path)

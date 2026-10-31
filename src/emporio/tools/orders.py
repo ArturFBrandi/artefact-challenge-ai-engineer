@@ -198,7 +198,7 @@ class HandoffInput(BaseModel):
 
 
 def register_handoff(context: ToolContext, kind: str, summary: str) -> dict[str, Any]:
-    """One open handoff per kind per conversation, so retries never duplicate."""
+    """One handoff per kind per conversation. New details are added to the same protocol."""
     session_id = context.session.session_id
     now = context.clock.now()
     existing = context.connection.execute(
@@ -206,6 +206,11 @@ def register_handoff(context: ToolContext, kind: str, summary: str) -> dict[str,
     ).fetchone()
     if existing:
         protocol = existing["protocol"]
+        context.connection.execute(
+            "UPDATE handoffs SET summary = summary || char(10) || ? WHERE protocol = ?",
+            (redact(summary), protocol),
+        )
+        context.connection.commit()
     else:
         # One statement, so concurrent handoffs cannot take the same number.
         protocol = context.connection.execute(
