@@ -204,8 +204,8 @@ Where the material was silent or contradictory, I chose as follows. Items marked
 
 The project was built with **Claude Code** (Claude Opus 5.5).
 
-* **Brief first.** I had Claude read the challenge and a previous, much larger brief of mine, profile the data, and write [`initial-prompt.md`](initial-prompt.md), which is kept in this repository as a record.
-* **My decisions.** I reviewed that brief and made the calls: MiniMax as the model, the frozen clock, a web chat page rather than a CLI, English throughout, and when to publish.
+* **Spec-driven development.** I wrote the initial prompt, [`initial-prompt.md`](initial-prompt.md), to build the project with a spec-driven methodology. It is kept in this repository as a record.
+* **My decisions.** I made the main calls: MiniMax as the model, the frozen clock, a web chat page rather than a CLI, English throughout, and when to publish.
 * **Claude's work.** Claude wrote the code, tests, evaluation cases and documentation, working in phases and committing as it went. It ran the tests, reviewed its own work and found real bugs that way, such as a database lock held across model calls. These are visible in the commit history.
 
 ## Examples
