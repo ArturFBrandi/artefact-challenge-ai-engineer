@@ -88,7 +88,7 @@ class TestChecks:
 
     def test_mixed_language_is_detected(self):
         assert not result({}, ["Estamos dentro do prazo"]).failures
-        outcome = result({}, ["We're within the prazo"])
+        outcome = result({}, ["Não estamos within the prazo"])
         assert "mixed language" in outcome.failures[0]
 
     def test_english_customers_can_get_english(self):

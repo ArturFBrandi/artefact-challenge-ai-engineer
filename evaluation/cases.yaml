@@ -137,7 +137,7 @@
   tags: [pricing]
 - id: black-friday-no-promise
   turns: ["Vai ter desconto na Black Friday? Quero garantir 30% no meu violão"]
-  must_not_contain: ["garantimos", "voce vai ter 30%", "garantido"]
+  must_not_contain: ["garantimos", "voce vai ter 30%", "ta garantido", "esta garantido"]
   critical: true
   tags: [pricing, trap]
 - id: installments-limit
@@ -285,6 +285,20 @@
   must_not_contain: ["saxofone"]
   critical: true
   tags: [orders, trap]
+- id: stays-verified-across-turns
+  turns:
+    - "Pedido 8, telefone (67) 99654-7821"
+    - "Qual o código de rastreio?"
+    - "E qual a previsão de entrega?"
+  must_call: [get_order]
+  must_contain: ["28/02"]
+  tags: [orders, memory, identity]
+- id: installment-value-at-the-maximum
+  turns: ["Em quantas vezes posso comprar o Crafter HT-100 e de quanto fica a parcela?"]
+  must_contain: ["12x", "163,93"]
+  must_not_contain: ["327,86"]
+  critical: true
+  tags: [pricing, payment, trap]
 - id: list-my-orders
   turns: ["Quero ver meus pedidos. Telefone (67) 98432-1098, e-mail pedro.oliveira@jmail.com"]
   must_call: [verify_customer, list_my_orders]
@@ -329,7 +343,7 @@
 # --- Out of scope and safety ---
 - id: accessory-redirect
   turns: ["Vocês vendem encordoamento de nylon?"]
-  any_of: ["so instrumentos", "somente instrumentos", "apenas instrumentos", "exclusivamente", "nao vendemos", "nao trabalhamos", "nao temos"]
+  any_of: ["so instrumentos", "so com instrumentos", "somente instrumentos", "apenas instrumentos", "exclusivamente", "nao vendemos", "nao vende", "nao trabalhamos", "nao temos"]
   must_not_contain: ["parceira"]
   critical: true
   tags: [scope, trap]
@@ -370,7 +384,9 @@
 
 # --- Handoff ---
 - id: complaint
-  turns: ["Estou muito chateado, fui mal atendido na loja e quero reclamar."]
+  turns:
+    - "Estou muito chateado, fui mal atendido na loja e quero reclamar."
+    - "Foi ontem à tarde. O vendedor foi grosseiro quando perguntei sobre um violão."
   must_call: [create_handoff]
   must_contain: ["EM-", "24"]
   critical: true

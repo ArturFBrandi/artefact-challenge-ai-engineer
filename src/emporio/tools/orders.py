@@ -53,6 +53,15 @@ def _matches(customer: sqlite3.Row, phone: str | None, email: str | None) -> boo
 
 def verify_customer(context: ToolContext, args: VerifyCustomerInput) -> dict[str, Any]:
     session = context.session
+    if session.verified_customer_id is not None:
+        current = repo.customer_by_id(context.connection, session.verified_customer_id)
+        if current is not None and (
+            args.order_id is None
+            or repo.order_for_customer(
+                context.connection, args.order_id, session.verified_customer_id
+            )
+        ):
+            return {"verified": True, "first_name": current["name"].split()[0]}
     if session.failed_verifications >= MAX_VERIFICATION_ATTEMPTS:
         raise ToolFailure("verification_locked_create_a_handoff")
 

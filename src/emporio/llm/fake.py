@@ -41,9 +41,11 @@ class FakeLLMProvider:
     def __init__(self, script: Iterable[Step] = ()) -> None:
         self._script = list(script)
         self.calls: list[list[dict[str, Any]]] = []
+        self.tool_counts: list[int] = []
 
     def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse:
         self.calls.append([dict(message) for message in messages])
+        self.tool_counts.append(len(tools))
         if not self._script:
             return self._final("Test assistant: no script for this message.")
         step = self._script.pop(0)

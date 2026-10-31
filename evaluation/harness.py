@@ -1,6 +1,5 @@
 """Run evaluation cases through the real service. Assertions check behaviour, not wording."""
 
-import re
 import shutil
 import time
 from collections.abc import Callable
@@ -11,6 +10,7 @@ from typing import Any
 
 import yaml
 
+from emporio.agent.validators import language_problems
 from emporio.clock import FrozenClock
 from emporio.config import ROOT, Settings
 from emporio.domain.rules import load_facts, load_rules
@@ -20,9 +20,6 @@ from emporio.text import fold
 
 CASES_PATH = ROOT / "evaluation" / "cases.yaml"
 DEFAULT_CLOCK = "2026-03-25T10:00:00-04:00"
-ENGLISH_WORDS = re.compile(
-    r"\b(the|we're|within|would|your|you|details|compare|please|refund|window|store)\b"
-)
 
 
 @dataclass
@@ -57,8 +54,8 @@ def load_cases(path: Path = CASES_PATH) -> list[dict[str, Any]]:
 
 
 def mixed_language(reply: str) -> list[str]:
-    """English words in a reply that should be entirely in Portuguese."""
-    return sorted(set(ENGLISH_WORDS.findall(reply.lower())))
+    """English words in a Portuguese reply, or glued-word glitches."""
+    return language_problems(reply)
 
 
 def check(result: CaseResult) -> None:

@@ -34,8 +34,9 @@ def run_loop(
     result.reply = None
     specs = [tool.spec() for tool in tools.values()]
 
-    for _ in range(max_rounds):
-        response = provider.complete(messages, specs)
+    for round_number in range(1, max_rounds + 1):
+        # The last round offers no tools, so the model has to answer with what it found.
+        response = provider.complete(messages, [] if round_number == max_rounds else specs)
         result.add_usage(response.usage)
 
         if not response.tool_calls:

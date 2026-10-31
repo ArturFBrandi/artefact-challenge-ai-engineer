@@ -34,7 +34,7 @@ def call(context, name, **arguments):
 
 class TestCatalog:
     def test_budget_search_hides_unavailable(self, context):
-        result = call(context, "search_products", category="Violões", max_price=1000, limit=12)
+        result = call(context, "search_products", category="Violões", max_price=1000)
         names = [p["name"] for p in result["products"]]
         assert result["total_matches"] == 12
         assert result["unavailable_matches_hidden"] == 2
@@ -48,7 +48,7 @@ class TestCatalog:
         assert fits[0]["pix_price"] == "R$ 996,55"
 
     def test_budget_uses_promotional_price(self, context):
-        result = call(context, "search_products", category="Ukuleles", max_price=450, limit=12)
+        result = call(context, "search_products", category="Ukuleles", min_price=400, max_price=450)
         assert 121 in [p["product_id"] for p in result["products"]]  # 549 with 20% off
 
     def test_empty_categories_say_nothing_matches(self, context):
@@ -60,7 +60,7 @@ class TestCatalog:
         assert call(context, "search_products", query="saxofone")["total_matches"] == 0
 
     def test_search_handles_plural_and_accents(self, context):
-        result = call(context, "search_products", query="violoes 7 cordas", limit=12)
+        result = call(context, "search_products", query="violoes 7 cordas")
         assert result["total_matches"] == 4  # the fifth one, #113, is discontinued
 
     def test_extra_words_do_not_hide_the_catalog(self, context):
@@ -144,6 +144,12 @@ class TestCatalog:
         )
         assert result["installments_allowed"] is False
         assert result["max_installments"] == 6  # R$ 699,90: 7x would be under R$ 100
+        assert result["value_at_max_installments"] == "R$ 116,65"
+
+    def test_value_at_the_maximum_uses_the_promotional_price(self, context):
+        result = call(context, "get_product", name_or_id="90")
+        assert result["max_installments"] == 12
+        assert result["value_at_max_installments"] == "R$ 163,93"
 
     def test_active_promotions_list_has_four(self, context):
         result = call(context, "list_active_promotions")
@@ -225,6 +231,18 @@ class TestVerification:
         result = call(context, "verify_customer", order_id=10, email="bruno.martins@jmail.com")
         assert result["verified"] is True
         assert context.session.verified_customer_id == 11
+
+    def test_verified_session_does_not_reverify(self, context):
+        call(context, "verify_customer", **ANA)
+        result = call(context, "verify_customer", order_id=8, phone="[phone]")
+        assert result == {"ok": True, "verified": True, "first_name": "Ana"}
+        assert context.session.failed_verifications == 0
+
+    def test_verified_session_cannot_reach_another_order_by_reverifying(self, context):
+        call(context, "verify_customer", **ANA)
+        result = call(context, "verify_customer", order_id=4, phone="[phone]")
+        assert result["error"] == "verification_failed"
+        assert context.session.verified_customer_id == 2
 
     def test_phone_and_email_together(self, context):
         result = call(

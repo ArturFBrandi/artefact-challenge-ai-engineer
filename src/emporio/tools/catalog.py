@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from emporio.data import repositories as repo
 from emporio.domain.availability import Availability, availability_of
-from emporio.domain.money import format_brl, from_cents
+from emporio.domain.money import format_brl, from_cents, to_money
 from emporio.domain.pricing import (
     PaymentMethod,
     max_installments,
@@ -80,7 +80,7 @@ class SearchProductsInput(BaseModel):
     strings: Literal["nylon", "steel"] | None = Field(None, description="String type")
     electronics: bool | None = Field(None, description="True for electro-acoustic models")
     available_only: bool = Field(True, description="Keep true unless asked about unavailable items")
-    limit: int = Field(6, ge=1, le=12)
+    limit: int = Field(4, ge=1, le=6, description="How many products to show")
 
 
 def _match_terms(rows: list[sqlite3.Row], terms: set[str]) -> tuple[list[sqlite3.Row], bool]:
@@ -188,7 +188,9 @@ def get_product(context: ToolContext, args: GetProductInput) -> dict[str, Any]:
     result["specs"] = json.loads(row["specs"])
     if availability is Availability.AVAILABLE:
         result["stock_quantity"] = row["stock_quantity"]
-        result["max_installments"] = max_installments(_current_price(row), context.rules.payment)
+        limit = max_installments(_current_price(row), context.rules.payment)
+        result["max_installments"] = limit
+        result["value_at_max_installments"] = format_brl(to_money(_current_price(row) / limit))
     else:
         result["alternatives"] = [_summary(r, context.rules) for r in _alternatives(row, rows)]
         del result["pix_price"]
@@ -226,6 +228,10 @@ def quote_price(context: ToolContext, args: QuotePriceInput) -> dict[str, Any]:
         "max_installments": result.max_installments,
         "notes": list(result.notes),
     }
+    if args.payment_method is PaymentMethod.CREDIT:
+        output["value_at_max_installments"] = format_brl(
+            to_money(result.final_price / result.max_installments)
+        )
     if result.installment_value is not None:
         output["installment_value"] = format_brl(result.installment_value)
     if result.promotion_percent:

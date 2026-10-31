@@ -3,7 +3,9 @@ from datetime import datetime
 import pytest
 
 from emporio.agent.validators import (
+    clean_format,
     contacts_in,
+    language_problems,
     leaked_contacts,
     number_tokens,
     parse_number,
@@ -50,6 +52,29 @@ class TestNumbers:
 
     def test_money_with_punctuation_after(self):
         assert unsupported_amounts("Custa R$ 500.", {"500"}) == []
+
+
+class TestLanguage:
+    @pytest.mark.parametrize(
+        "reply",
+        ["Quer que euCOMPARE as opções?", "Nada está announcement/garantido", "Você is the best"],
+    )
+    def test_glitches_are_found(self, reply):
+        assert language_problems(reply)
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            "Quer que eu compare as opções? Não tem problema.",
+            "The price is R$ 699,90. Would you like more details?",
+            "Takamine GD20 Dreadnought com PIX e MIDI",
+        ],
+    )
+    def test_clean_replies_pass(self, reply):
+        assert language_problems(reply) == []
+
+    def test_markdown_emphasis_is_removed(self):
+        assert clean_format("Me passa o **número** do pedido") == "Me passa o número do pedido"
 
 
 class TestContacts:
@@ -167,6 +192,13 @@ class TestLoop:
         assert result.debug["llm_calls"] == 4
         assert "EM-20260325-0001" in result.reply
 
+    def test_last_round_offers_no_tools_so_the_model_answers(self, make_service):
+        service, provider = make_service([tool_step("get_store_status")] * 3 + ["Resposta"])
+        result = service.handle_message(service.create_session(), "oi")
+        assert result.reply == "Resposta"
+        assert provider.tool_counts[:3] == [12, 12, 12]
+        assert provider.tool_counts[3] == 0
+
     def test_malformed_arguments_go_back_to_the_model(self, make_service):
         service, provider = make_service([tool_step("get_order", "{oops"), "Pode repetir?"])
         result = service.handle_message(service.create_session(), "pedido")
@@ -236,6 +268,19 @@ class TestGrounding:
         service.handle_message(session, "preço?")
         result = service.handle_message(session, "quanto mesmo?")
         assert result.debug["outcome"] == "answered"
+
+
+class TestLanguageRetry:
+    def test_glitch_triggers_a_rewrite(self, make_service):
+        service, _ = make_service(["Quer que euCOMPARE?", "Quer que eu compare?"])
+        result = service.handle_message(service.create_session(), "oi")
+        assert result.reply == "Quer que eu compare?"
+        assert result.debug["outcome"] == "corrected"
+
+    def test_bold_is_removed_before_sending(self, make_service):
+        service, _ = make_service(["Me passa o **pedido**"])
+        result = service.handle_message(service.create_session(), "oi")
+        assert result.reply == "Me passa o pedido"
 
 
 class TestMemory:

@@ -12,6 +12,27 @@ PERCENT = re.compile(rf"({_NUMBER})\s*%")
 ANY_NUMBER = re.compile(_NUMBER)
 
 
+ENGLISH_WORDS = re.compile(
+    r"\b(the|we're|within|would|your|you|details|please|refund|window|store|announcement)\b"
+)
+PORTUGUESE_MARKERS = re.compile(r"\b(não|você|está|são|também|pra|para|com)\b")
+GLUED_CAPITALS = re.compile(r"[a-zà-ÿ][A-Z]{3,}")
+
+
+def language_problems(reply: str) -> list[str]:
+    """Generation glitches seen live: 'euCOMPARE', or English words in a Portuguese reply."""
+    problems = [m[0] for m in GLUED_CAPITALS.finditer(reply)]
+    lowered = reply.lower()
+    if PORTUGUESE_MARKERS.search(lowered):
+        problems += sorted({m[0] for m in ENGLISH_WORDS.finditer(lowered)})
+    return problems
+
+
+def clean_format(reply: str) -> str:
+    """The chat shows plain text, so markdown emphasis would appear as literal asterisks."""
+    return reply.replace("**", "").strip()
+
+
 def parse_number(text: str) -> Decimal | None:
     """Read Brazilian or English number formats: 2.199,00 / 2,199.00 / 2199 / 2.199."""
     last_dot, last_comma = text.rfind("."), text.rfind(",")

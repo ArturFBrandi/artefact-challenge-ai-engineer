@@ -12,7 +12,9 @@ import yaml
 
 from emporio.agent.loop import LoopResult, run_loop
 from emporio.agent.validators import (
+    clean_format,
     contacts_in,
+    language_problems,
     leaked_contacts,
     number_tokens,
     unsupported_amounts,
@@ -124,7 +126,10 @@ class AgentService:
         customer = repo.customer_by_id(connection, customer_id) if customer_id else None
         if customer:
             first_name = customer["name"].split()[0]
-            lines.append(f"This customer is verified. First name: {first_name}.")
+            lines.append(
+                f"This customer is already verified. First name: {first_name}. Do not ask for "
+                "their details again, and go straight to the order tools."
+            )
         else:
             lines.append("This customer is not verified.")
         return "\n".join(lines)
@@ -203,10 +208,16 @@ class AgentService:
             reply = loop.reply or ""
             bad_amounts = unsupported_amounts(reply, evidence)
             bad_contacts = leaked_contacts(reply, allowed_contacts)
-            if not bad_amounts and not bad_contacts:
+            bad_language = language_problems(reply)
+            if not bad_amounts and not bad_contacts and not bad_language:
                 session.evidence = " ".join(sorted(evidence - self._base_evidence))
-                return reply, "answered" if attempt == 0 else "corrected"
-            logger.info("Reply rejected: amounts=%s contacts=%d", bad_amounts, len(bad_contacts))
+                return clean_format(reply), "answered" if attempt == 0 else "corrected"
+            logger.info(
+                "Reply rejected: amounts=%s contacts=%d language=%s",
+                bad_amounts,
+                len(bad_contacts),
+                bad_language,
+            )
             if attempt == SAFE_RETRY_LIMIT:
                 break
             messages.append(
@@ -214,8 +225,8 @@ class AgentService:
                     "role": "user",
                     "content": "[Automatic check, not from the customer] Your reply was not sent. "
                     f"These values have no source: {bad_amounts}. Personal contact details "
-                    f"found: {len(bad_contacts)}. Use the tools or remove them, and rewrite "
-                    "the reply for the customer.",
+                    f"found: {len(bad_contacts)}. Foreign words or typing errors: {bad_language}. "
+                    "Use the tools or remove them, and rewrite the reply for the customer.",
                 }
             )
             run_loop(
