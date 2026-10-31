@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
-from emporio.domain.money import format_brl, to_money
+from emporio.domain.money import to_money
 from emporio.domain.rules import PaymentRules
 
 MAX_INSTALLMENTS = 12
@@ -104,7 +104,3 @@ def quote(
         installments_allowed=allowed,
         notes=tuple(notes),
     )
-
-
-def describe_final_price(result: Quote) -> str:
-    return format_brl(result.final_price)

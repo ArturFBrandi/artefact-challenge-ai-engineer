@@ -37,11 +37,10 @@ def shipping_for(city: str, order_value: Decimal | None, rules: ShippingRules) -
         )
 
     threshold = rules.metro_free_above_brl
+    notes: tuple[str, ...]
     if order_value is None:
         fee, free, undefined = None, None, False
-        notes = (
-            f"Free above {threshold} BRL, flat fee {rules.metro_flat_fee_brl} BRL below it.",
-        )
+        notes = (f"Free above {threshold} BRL, flat fee {rules.metro_flat_fee_brl} BRL below it.",)
     elif order_value == threshold:
         fee, free, undefined = None, None, True
         notes = ("The policy covers amounts above and below this value, but not this exact one.",)

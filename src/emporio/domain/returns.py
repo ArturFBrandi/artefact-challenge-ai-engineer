@@ -5,6 +5,7 @@ with §8.1 between days 31 and 90. Those cases ask the customer or go to a human
 guessing. See docs/DATA_AUDIT.md.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
@@ -61,6 +62,9 @@ EXCLUSIONS_CAVEAT = (
 )
 
 
+Decide = Callable[..., ReturnDecision]
+
+
 def evaluate_return(request: ReturnRequest, today: date, rules: ReturnRules) -> ReturnDecision:
     since_purchase = (today - request.order_date).days
     since_receipt = (
@@ -89,11 +93,13 @@ def evaluate_return(request: ReturnRequest, today: date, rules: ReturnRules) -> 
         )
 
     if request.reason is ReturnReason.DEFECT:
-        return _defect(request, since_purchase, since_receipt, rules, decide)
+        return _defect(since_purchase, since_receipt, rules, decide)
     return _within_days_of_receipt(request, since_receipt, rules, decide)
 
 
-def _defect(request, since_purchase, since_receipt, rules, decide):  # type: ignore[no-untyped-def]
+def _defect(
+    since_purchase: int, since_receipt: int, rules: ReturnRules, decide: Decide
+) -> ReturnDecision:
     caveats = ("Damage from misuse, falls, humidity or unauthorized changes is not covered.",)
     if since_purchase <= rules.defect_exchange_days:
         return decide(
@@ -121,7 +127,9 @@ def _defect(request, since_purchase, since_receipt, rules, decide):  # type: ign
     )
 
 
-def _within_days_of_receipt(request, since_receipt, rules, decide):  # type: ignore[no-untyped-def]
+def _within_days_of_receipt(
+    request: ReturnRequest, since_receipt: int, rules: ReturnRules, decide: Decide
+) -> ReturnDecision:
     regret = request.reason is ReturnReason.REGRET
     limit = rules.regret_days if regret else rules.preference_exchange_days
     rule = "right_of_regret_4_1" if regret else "preference_exchange_4_3"
@@ -171,6 +179,7 @@ def _within_days_of_receipt(request, since_receipt, rules, decide):  # type: ign
             caveats=(PROXY_CAVEAT,),
         )
 
+    caveats: tuple[str, ...]
     if regret:
         detail = (
             f"Refund to the original payment method within {rules.refund_business_days} business "
@@ -180,4 +189,6 @@ def _within_days_of_receipt(request, since_receipt, rules, decide):  # type: ign
     else:
         detail = "Subject to availability; value differences are charged or refunded."
         caveats = (PROXY_CAVEAT, EXCLUSIONS_CAVEAT)
-    return decide(Verdict.ELIGIBLE, rule, f"Inside the {limit}-day window. {detail}", caveats=caveats)
+    return decide(
+        Verdict.ELIGIBLE, rule, f"Inside the {limit}-day window. {detail}", caveats=caveats
+    )
