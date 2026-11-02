@@ -1,0 +1,17 @@
+# Secrets and local state
+.env
+var/
+
+# Hiring statement: evaluators already have it
+desafio_tecnico_ai_eng_artefact.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+*.egg-info/

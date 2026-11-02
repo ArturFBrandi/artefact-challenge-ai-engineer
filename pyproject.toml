@@ -1,0 +1,58 @@
+[project]
+name = "emporio-agent"
+version = "0.1.0"
+description = "Customer-service agent prototype for Empório da Música"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "openai>=1.60",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pymupdf>=1.25",
+    "pyyaml>=6.0",
+    "rank-bm25>=0.2.2",
+    "snowballstemmer>=2.2",
+    "wordfreq>=3.1.1",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "types-pyyaml>=6.0",
+]
+benchmark = ["fastembed>=0.5"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/emporio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "evaluation"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["rank_bm25.*", "snowballstemmer.*", "pymupdf.*", "fastembed.*", "wordfreq.*"]
+ignore_missing_imports = true

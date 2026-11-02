@@ -1,0 +1,31 @@
+# Rules that drive calculations. Each value cites its section in the manual.
+# tests/test_policies.py checks these values still match the manual's text.
+
+payment:
+  pix_discount_percent: 5          # §3
+  combined_payment_above_brl: 2000 # §3.1
+  installment_tiers:               # §3.1; the §3 table is less specific (see docs/DATA_AUDIT.md)
+    - {up_to: 3, min_installment_brl: 50}
+    - {up_to: 6, min_installment_brl: 80}
+    - {up_to: 12, min_installment_brl: 100}
+
+shipping:
+  metro_free_above_brl: 500        # §5.1
+  metro_flat_fee_brl: 35           # §5.1
+  metro_days: "1 to 3 business days"
+  other_cities:                    # §5.2
+    - {name: "PAC (Correios)", days: "5 to 12 business days"}
+    - {name: "SEDEX (Correios)", days: "2 to 5 business days"}
+    - {name: "Jadlog (.package)", days: "3 to 8 business days"}
+
+returns:
+  regret_days: 7                   # §4.1, calendar days from receipt, online purchases
+  defect_exchange_days: 30         # §4.2, calendar days from purchase
+  preference_exchange_days: 7      # §4.3, start date assumed to be receipt
+  legal_warranty_days: 90          # §8.1, from receipt
+  refund_business_days: 10         # §4.1
+  # Delivery dates are estimates, so results this close to a limit go to a human.
+  estimate_margin_days: 3
+
+handoff:
+  complaint_response: "24 business hours"  # §7.3
